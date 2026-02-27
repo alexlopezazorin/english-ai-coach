@@ -65,7 +65,7 @@
 
       const supabase = window.supabase.createClient(
         "https://mxzwicfxfabkelyrpozo.supabase.co",
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
+        "PEGA_AQUI_LA_ANON_PUBLIC_KEY_REAL"
       );
 
       let sessionStart = null;
@@ -112,13 +112,17 @@
         const end = new Date();
         const duration = Math.floor((end - sessionStart) / 1000);
 
-        await supabase
+        console.log("Ending session...", { currentSessionId, duration });  // <-- Verificación
+
+        const { data, error } = await supabase
           .from("sessions")
           .update({
             ended_at: end,
             duration_seconds: duration
           })
           .eq("id", currentSessionId);
+
+        console.log("Session ended data:", data, "error:", error);
       }
 
       // =============================
@@ -157,23 +161,28 @@
       // =============================
 
       function loadVapi() {
+        console.log("Loading Vapi...");  // <-- Verificación
+
         if (vapiInstance) return;
 
         const script = document.createElement("script");
         script.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
         script.async = true;
 
-        script.onload = async function () {
+        script.onload = function () {
+          console.log("Vapi script loaded successfully");
 
-          await startSession();
-
+          // Inicialización de Vapi después de cargar el script
           vapiInstance = window.vapiSDK.run({
             apiKey: apiKey,
             assistant: assistant,
-            config: buttonConfig
+            config: buttonConfig,
           });
 
+          console.log("Vapi instance initialized", vapiInstance);  // <-- Verificación
+
           vapiInstance.on("call-end", async () => {
+            console.log("Call ended, saving session...");
             await endSession();
           });
         };
@@ -189,6 +198,8 @@
 
       if (loginBtn) {
         loginBtn.addEventListener("click", login);
+      } else {
+        console.error("No se encontró el botón con id='loginButton'");
       }
 
     });
