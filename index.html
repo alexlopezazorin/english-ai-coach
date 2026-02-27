@@ -18,11 +18,6 @@
       margin-bottom: 20px;
     }
 
-    h2 {
-      font-size: 24px;
-      margin-bottom: 10px;
-    }
-
     input {
       padding: 10px;
       margin: 5px;
@@ -33,6 +28,7 @@
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
+      margin-top: 10px;
     }
 
     p {
@@ -41,17 +37,21 @@
     }
   </style>
 </head>
-
 <body>
 
   <h1>Welcome to the Speaking class</h1>
-  <h2>Login</h2>
 
-  <input type="email" id="email" placeholder="Email">
-  <input type="password" id="password" placeholder="Password">
-  <button id="loginButton" type="button">Login</button>
+  <!-- Formulario de login -->
+  <div id="loginForm">
+    <input type="email" id="email" placeholder="Correo electrónico">
+    <button id="loginButton">Entrar</button>
+  </div>
 
-  <p>After login, click the button to start speaking</p>
+  <!-- UI post-login -->
+  <div id="postLoginUI" style="display:none;">
+    <p>Dale al botón para empezar la conversación</p>
+    <button id="logoutButton">Cerrar sesión</button>
+  </div>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -59,10 +59,9 @@
   <script>
     document.addEventListener("DOMContentLoaded", function () {
 
-      // =============================
-      // 1️⃣ Conectar con Supabase
-      // =============================
-
+      // -------------------------
+      // Conexión a Supabase
+      // -------------------------
       const supabase = window.supabase.createClient(
         "https://mxzwicfxfabkelyrpozo.supabase.co",
         "PEGA_AQUI_LA_ANON_PUBLIC_KEY_REAL"
@@ -72,114 +71,129 @@
       let currentSessionId = null;
       let vapiInstance = null;
 
-      const assistant = "378de0bf-1fbb-49e0-a326-78416c92a96f";
+      const assistant = "378de0bf-1fbb-49e0-a326-78416c92a9450-a395090da1cd";
       const apiKey = "0443c03c-942d-4a2a-9450-a395090da1cd";
-
       const buttonConfig = {
         position: "bottom",
         size: "large",
         label: "Start Speaking"
       };
 
-      // =============================
-      // 2️⃣ Crear sesión en DB
-      // =============================
-
-      async function startSession() {
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) return;
-
+      // -------------------------
+      // Funciones de sesión
+      // -------------------------
+      async function startSession(userId) {
         sessionStart = new Date();
-
         const { data } = await supabase
           .from("sessions")
           .insert([{
-            user_id: user.id,
+            user_id: userId,
             started_at: sessionStart,
             assistant_version: "v1"
           }])
           .select();
-
-        if (data && data.length > 0) {
-          currentSessionId = data[0].id;
-        }
+        if (data && data.length > 0) currentSessionId = data[0].id;
       }
 
       async function endSession() {
         if (!currentSessionId || !sessionStart) return;
-
         const end = new Date();
         const duration = Math.floor((end - sessionStart) / 1000);
-
-        console.log("Ending session...", { currentSessionId, duration });  // <-- Verificación
-
-        const { data, error } = await supabase
+        await supabase
           .from("sessions")
           .update({
             ended_at: end,
             duration_seconds: duration
           })
           .eq("id", currentSessionId);
-
-        console.log("Session ended data:", data, "error:", error);
       }
 
-      // =============================
-      // 3️⃣ Login
-      // =============================
-
+      // -------------------------
+      // Login
+      // -------------------------
       async function login() {
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
+        const email = document.getElementById("email").value.trim().toLowerCase();
+        if (!email) {
+          alert("Introduce tu correo electrónico");
+          return;
+        }
 
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
+        // Verificar si el email está en allowed_users
+        const { data: allowed, error } = await supabase
+          .from("allowed_users")
+          .select("email")
+          .eq("email", email)
+          .limit(1);
 
         if (error) {
-          alert(error.message);
-        } else {
-          alert("Logged in!");
-          loadVapi();
+          console.error(error);
+          alert("Error al verificar usuario");
+          return;
         }
+
+        if (!allowed || allowed.length === 0) {
+          alert("Acceso denegado: correo no autorizado");
+          return;
+        }
+
+        // Guardar sesión como usuario "fake" en Supabase auth para mantener sesión
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: "fakepassword123!" // temporal, solo para mantener sesión
+        });
+
+        if (signInError) {
+          // Puede fallar porque la cuenta no existe, pero para nuestro caso lo ignoramos
+          console.log("Simulación de login auth ignorando error:", signInError.message);
+        }
+
+        // Ocultar login y mostrar post-login
+        document.getElementById("loginForm").style.display = "none";
+        document.getElementById("postLoginUI").style.display = "block";
+
+        // Cargar Vapi
+        loadVapi(email); // pasamos email para startSession
       }
 
-      // =============================
-      // 4️⃣ Mantener sesión activa
-      // =============================
+      // -------------------------
+      // Logout
+      // -------------------------
+      document.getElementById("logoutButton").addEventListener("click", async () => {
+        document.getElementById("postLoginUI").style.display = "none";
+        document.getElementById("loginForm").style.display = "block";
 
-      supabase.auth.getSession().then(({ data }) => {
-        if (data.session) {
-          loadVapi();
-        }
+        await endSession();
+        currentSessionId = null;
+        sessionStart = null;
+
+        await supabase.auth.signOut();
+
+        // Recargar página para limpiar estado Vapi
+        window.location.reload();
       });
 
-      // =============================
-      // 5️⃣ Cargar Vapi
-      // =============================
-
-      function loadVapi() {
-        console.log("Loading Vapi...");  // <-- Verificación
-
+      // -------------------------
+      // Cargar Vapi
+      // -------------------------
+      function loadVapi(userEmail) {
         if (vapiInstance) return;
 
         const script = document.createElement("script");
         script.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
         script.async = true;
 
-        script.onload = function () {
-          console.log("Vapi script loaded successfully");
+        script.onload = async function () {
+          console.log("Vapi script loaded");
 
-          // Inicialización de Vapi después de cargar el script
+          // Crear sesión en DB
+          await startSession(userEmail);
+
+          // Inicializar Vapi
           vapiInstance = window.vapiSDK.run({
             apiKey: apiKey,
             assistant: assistant,
             config: buttonConfig,
           });
-
-          console.log("Vapi instance initialized", vapiInstance);  // <-- Verificación
 
           vapiInstance.on("call-end", async () => {
             console.log("Call ended, saving session...");
@@ -190,17 +204,21 @@
         document.body.appendChild(script);
       }
 
-      // =============================
-      // 6️⃣ Conectar botón
-      // =============================
+      // -------------------------
+      // Conectar botón login
+      // -------------------------
+      document.getElementById("loginButton").addEventListener("click", login);
 
-      const loginBtn = document.getElementById("loginButton");
-
-      if (loginBtn) {
-        loginBtn.addEventListener("click", login);
-      } else {
-        console.error("No se encontró el botón con id='loginButton'");
-      }
+      // -------------------------
+      // Mantener sesión si recarga
+      // -------------------------
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) {
+          document.getElementById("loginForm").style.display = "none";
+          document.getElementById("postLoginUI").style.display = "block";
+          loadVapi(data.session.user.email);
+        }
+      });
 
     });
   </script>
