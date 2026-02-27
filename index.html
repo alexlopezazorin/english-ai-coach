@@ -56,7 +56,7 @@
 
   <script>
     // -------------------------
-    // 1️. Conexión a Supabase
+    // 1️⃣ Conexión a Supabase
     // -------------------------
     const supabase = window.supabase.createClient(
       "https://mxzwicfxfabkelyrpozo.supabase.co",
@@ -64,72 +64,91 @@
     );
 
     // -------------------------
-    // 2️. Sesiones
+    // 2️⃣ Sesiones
     // -------------------------
     let sessionStart;
     let currentSessionId;
 
     async function startSession() {
-      const { data } = await supabase.auth.getUser();
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      console.log("startSession - userData:", userData, "userError:", userError);
+
+      if (!userData) {
+        console.warn("No user logged in, no session started");
+        return;
+      }
+
       sessionStart = new Date();
 
-      const { data: sessionData } = await supabase
+      const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")
         .insert([{
-          user_id: data.user.id,
+          user_id: userData.user.id,
           started_at: sessionStart,
           assistant_version: "v1"
         }])
         .select();
 
-      currentSessionId = sessionData[0].id;
+      console.log("startSession - sessionData:", sessionData, "sessionError:", sessionError);
+
+      if (sessionData && sessionData.length > 0) {
+        currentSessionId = sessionData[0].id;
+      }
     }
 
     async function endSession() {
       const end = new Date();
       const duration = Math.floor((end - sessionStart) / 1000);
 
-      await supabase
+      const { data, error } = await supabase
         .from("sessions")
         .update({
           ended_at: end,
           duration_seconds: duration
         })
         .eq("id", currentSessionId);
+
+      console.log("endSession - data:", data, "error:", error);
     }
 
     // -------------------------
-    // 3️. Login
+    // 3️⃣ Login
     // -------------------------
     async function login() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
 
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("Attempting login with email:", email);
+
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      console.log("Login response data:", data);
+      console.log("Login response error:", error);
 
       if (error) {
         alert(error.message);
       } else {
         alert("Logged in!");
-        loadVapi(); // carga Vapi solo al loguearse
+        loadVapi();
       }
     }
 
     // Mantener sesión si recarga la página
     supabase.auth.getSession().then(({ data }) => {
+      console.log("Initial session on page load:", data);
       if (data.session) {
         loadVapi();
       }
     });
 
     // -------------------------
-    // 4️. Vapi
+    // 4️⃣ Vapi
     // -------------------------
     var vapiInstance = null;
-    const assistant = "378de0bf-1fbb-49e0-a326-78416c92a96f";
+    const assistant = "378de0bf-1fbb-49e0-a326-78416c92a9450-a395090da1cd";
     const apiKey = "0443c03c-942d-4a2a-9450-a395090da1cd";
     const buttonConfig = {
       position: "bottom",
@@ -138,16 +157,18 @@
     };
 
     function loadVapi() {
-      if (vapiInstance) return; // evitar doble carga
+      if (vapiInstance) return;
+
+      console.log("Loading Vapi...");
 
       var g = document.createElement("script");
-      g.src =
-        "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+      g.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
       g.defer = true;
       g.async = true;
 
       g.onload = async function () {
-        await startSession(); // iniciar registro de sesión
+        console.log("Vapi script loaded");
+        await startSession();
 
         vapiInstance = window.vapiSDK.run({
           apiKey: apiKey,
@@ -155,8 +176,8 @@
           config: buttonConfig,
         });
 
-        // Guardar fin de sesión cuando termina la llamada
         vapiInstance.on("call-end", async () => {
+          console.log("Call ended, saving session...");
           await endSession();
         });
       };
