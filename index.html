@@ -48,12 +48,11 @@
   <h2>Login</h2>
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Password">
-  <button onclick="login()">Login</button>
+  <button id="loginButton">Login</button>
   <p>After login, click the button to start speaking</p>
 
-  <!-- Supabase JS -->
+  <!-- Scripts al final del body -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <script>
     // -------------------------
     // 1️⃣ Conexión a Supabase
@@ -136,7 +135,9 @@
       }
     }
 
-    // Mantener sesión si recarga la página
+    // -------------------------
+    // 4️⃣ Mantener sesión si recarga la página
+    // -------------------------
     supabase.auth.getSession().then(({ data }) => {
       console.log("Initial session on page load:", data);
       if (data.session) {
@@ -145,7 +146,7 @@
     });
 
     // -------------------------
-    // 4️⃣ Vapi
+    // 5️⃣ Vapi
     // -------------------------
     var vapiInstance = null;
     const assistant = "378de0bf-1fbb-49e0-a326-78416c92a9450-a395090da1cd";
@@ -184,6 +185,11 @@
 
       document.body.appendChild(g);
     }
+
+    // -------------------------
+    // 6️⃣ Conectar botón de login
+    // -------------------------
+    document.getElementById("loginButton").addEventListener("click", login);
   </script>
 
 </body>
