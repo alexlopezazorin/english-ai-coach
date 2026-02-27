@@ -18,19 +18,116 @@
       margin-bottom: 20px;
     }
 
+    h2 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    input {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
     p {
       font-size: 18px;
       color: #555;
     }
   </style>
 </head>
+
 <body>
 
   <h1>Welcome to the Speaking class</h1>
-  <p>Click the button to start the speaking</p>
+  <h2>Login</h2>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p>After login, click the button to start speaking</p>
 
-  <!-- VAPI SCRIPT -->
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
+    // -------------------------
+    // 1️. Conexión a Supabase
+    // -------------------------
+    const supabase = window.supabase.createClient(
+      "https://mxzwicfxfabkelyrpozo.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
+    );
+
+    // -------------------------
+    // 2️. Sesiones
+    // -------------------------
+    let sessionStart;
+    let currentSessionId;
+
+    async function startSession() {
+      const { data } = await supabase.auth.getUser();
+      sessionStart = new Date();
+
+      const { data: sessionData } = await supabase
+        .from("sessions")
+        .insert([{
+          user_id: data.user.id,
+          started_at: sessionStart,
+          assistant_version: "v1"
+        }])
+        .select();
+
+      currentSessionId = sessionData[0].id;
+    }
+
+    async function endSession() {
+      const end = new Date();
+      const duration = Math.floor((end - sessionStart) / 1000);
+
+      await supabase
+        .from("sessions")
+        .update({
+          ended_at: end,
+          duration_seconds: duration
+        })
+        .eq("id", currentSessionId);
+    }
+
+    // -------------------------
+    // 3️. Login
+    // -------------------------
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        alert(error.message);
+      } else {
+        alert("Logged in!");
+        loadVapi(); // carga Vapi solo al loguearse
+      }
+    }
+
+    // Mantener sesión si recarga la página
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        loadVapi();
+      }
+    });
+
+    // -------------------------
+    // 4️. Vapi
+    // -------------------------
     var vapiInstance = null;
     const assistant = "378de0bf-1fbb-49e0-a326-78416c92a96f";
     const apiKey = "0443c03c-942d-4a2a-9450-a395090da1cd";
@@ -40,23 +137,32 @@
       label: "Start Speaking"
     };
 
-    (function (d, t) {
-      var g = document.createElement(t),
-        s = d.getElementsByTagName(t)[0];
+    function loadVapi() {
+      if (vapiInstance) return; // evitar doble carga
+
+      var g = document.createElement("script");
       g.src =
         "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
       g.defer = true;
       g.async = true;
-      s.parentNode.insertBefore(g, s);
 
-      g.onload = function () {
+      g.onload = async function () {
+        await startSession(); // iniciar registro de sesión
+
         vapiInstance = window.vapiSDK.run({
           apiKey: apiKey,
           assistant: assistant,
           config: buttonConfig,
         });
+
+        // Guardar fin de sesión cuando termina la llamada
+        vapiInstance.on("call-end", async () => {
+          await endSession();
+        });
       };
-    })(document, "script");
+
+      document.body.appendChild(g);
+    }
   </script>
 
 </body>
