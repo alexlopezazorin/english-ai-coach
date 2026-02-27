@@ -4,37 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI English Coach</title>
-
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      margin-top: 100px;
+      margin-top: 50px;
       background-color: #f4f4f4;
     }
-
-    h1 {
-      font-size: 32px;
-      margin-bottom: 20px;
-    }
-
+    h1 { font-size: 32px; margin-bottom: 20px; }
+    h2 { font-size: 24px; margin-bottom: 10px; }
     input {
-      padding: 10px;
-      margin: 5px;
+      padding: 10px; margin: 5px;
       font-size: 16px;
     }
-
     button {
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
-      margin-top: 10px;
     }
-
-    p {
-      font-size: 18px;
-      color: #555;
-    }
+    p { font-size: 18px; color: #555; }
   </style>
 </head>
 <body>
@@ -43,25 +31,26 @@
 
   <!-- Formulario de login -->
   <div id="loginForm">
-    <input type="email" id="email" placeholder="Correo electrónico">
-    <button id="loginButton">Entrar</button>
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Email">
+    <button id="loginButton" type="button">Login</button>
   </div>
 
   <!-- UI post-login -->
   <div id="postLoginUI" style="display:none;">
     <p>Dale al botón para empezar la conversación</p>
-    <button id="logoutButton">Cerrar sesión</button>
+    <button id="logoutButton" type="button">Cerrar sesión</button>
   </div>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    document.addEventListener("DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", function() {
 
-      // -------------------------
-      // Conexión a Supabase
-      // -------------------------
+      // --------------------------
+      // 1️⃣ Conexión a Supabase
+      // --------------------------
       const supabase = window.supabase.createClient(
         "https://mxzwicfxfabkelyrpozo.supabase.co",
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
@@ -73,152 +62,89 @@
 
       const assistant = "378de0bf-1fbb-49e0-a326-78416c92a9450-a395090da1cd";
       const apiKey = "0443c03c-942d-4a2a-9450-a395090da1cd";
-      const buttonConfig = {
-        position: "bottom",
-        size: "large",
-        label: "Start Speaking"
-      };
+      const buttonConfig = { position:"bottom", size:"large", label:"Start Speaking" };
 
-      // -------------------------
-      // Funciones de sesión
-      // -------------------------
-      async function startSession(userId) {
+      // --------------------------
+      // 2️⃣ Sesiones
+      // --------------------------
+      async function startSession(userEmail) {
         sessionStart = new Date();
         const { data } = await supabase
           .from("sessions")
-          .insert([{
-            user_id: userId,
-            started_at: sessionStart,
-            assistant_version: "v1"
-          }])
+          .insert([{ user_email: userEmail, started_at: sessionStart, assistant_version:"v1" }])
           .select();
-        if (data && data.length > 0) currentSessionId = data[0].id;
+
+        if (data && data.length>0) currentSessionId = data[0].id;
       }
 
       async function endSession() {
         if (!currentSessionId || !sessionStart) return;
         const end = new Date();
-        const duration = Math.floor((end - sessionStart) / 1000);
+        const duration = Math.floor((end - sessionStart)/1000);
         await supabase
           .from("sessions")
-          .update({
-            ended_at: end,
-            duration_seconds: duration
-          })
+          .update({ ended_at:end, duration_seconds:duration })
           .eq("id", currentSessionId);
       }
 
-      // -------------------------
-      // Login
-      // -------------------------
+      // --------------------------
+      // 3️⃣ Login simplificado
+      // --------------------------
       async function login() {
         const email = document.getElementById("email").value.trim().toLowerCase();
-        if (!email) {
-          alert("Introduce tu correo electrónico");
-          return;
-        }
+        if (!email) { alert("Introduce tu correo"); return; }
 
-        // Verificar si el email está en allowed_users
+        // Verificar allowed_users
         const { data: allowed, error } = await supabase
           .from("allowed_users")
           .select("email")
-          .eq("email", email)
-          .limit(1);
+          .eq("email", email);
 
-        if (error) {
-          console.error(error);
-          alert("Error al verificar usuario");
-          return;
-        }
+        if (error) { console.error(error); alert("Error al verificar usuario"); return; }
+        if (!allowed || allowed.length===0) { alert("Acceso denegado: correo no autorizado"); return; }
 
-        if (!allowed || allowed.length === 0) {
-          alert("Acceso denegado: correo no autorizado");
-          return;
-        }
-
-        // Guardar sesión como usuario "fake" en Supabase auth para mantener sesión
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: "fakepassword123!" // temporal, solo para mantener sesión
-        });
-
-        if (signInError) {
-          // Puede fallar porque la cuenta no existe, pero para nuestro caso lo ignoramos
-          console.log("Simulación de login auth ignorando error:", signInError.message);
-        }
-
-        // Ocultar login y mostrar post-login
+        // Login OK → mostrar UI post-login
         document.getElementById("loginForm").style.display = "none";
         document.getElementById("postLoginUI").style.display = "block";
 
         // Cargar Vapi
-        loadVapi(email); // pasamos email para startSession
+        loadVapi(email);
       }
 
-      // -------------------------
-      // Logout
-      // -------------------------
-      document.getElementById("logoutButton").addEventListener("click", async () => {
+      // --------------------------
+      // 4️⃣ Logout
+      // --------------------------
+      function logout() {
         document.getElementById("postLoginUI").style.display = "none";
         document.getElementById("loginForm").style.display = "block";
-
-        await endSession();
+        if (vapiInstance) {
+          vapiInstance.destroy();
+          vapiInstance = null;
+        }
         currentSessionId = null;
         sessionStart = null;
+      }
 
-        await supabase.auth.signOut();
+      document.getElementById("loginButton").addEventListener("click", login);
+      document.getElementById("logoutButton").addEventListener("click", logout);
 
-        // Recargar página para limpiar estado Vapi
-        window.location.reload();
-      });
-
-      // -------------------------
-      // Cargar Vapi
-      // -------------------------
+      // --------------------------
+      // 5️⃣ Cargar Vapi
+      // --------------------------
       function loadVapi(userEmail) {
         if (vapiInstance) return;
-
         const script = document.createElement("script");
         script.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
         script.async = true;
 
-        script.onload = async function () {
-          console.log("Vapi script loaded");
-
-          // Crear sesión en DB
+        script.onload = async () => {
+          vapiInstance = window.vapiSDK.run({ apiKey, assistant, config: buttonConfig });
           await startSession(userEmail);
-
-          // Inicializar Vapi
-          vapiInstance = window.vapiSDK.run({
-            apiKey: apiKey,
-            assistant: assistant,
-            config: buttonConfig,
-          });
-
-          vapiInstance.on("call-end", async () => {
-            console.log("Call ended, saving session...");
-            await endSession();
-          });
+          vapiInstance.on("call-end", async () => await endSession());
         };
 
         document.body.appendChild(script);
       }
-
-      // -------------------------
-      // Conectar botón login
-      // -------------------------
-      document.getElementById("loginButton").addEventListener("click", login);
-
-      // -------------------------
-      // Mantener sesión si recarga
-      // -------------------------
-      supabase.auth.getSession().then(({ data }) => {
-        if (data.session) {
-          document.getElementById("loginForm").style.display = "none";
-          document.getElementById("postLoginUI").style.display = "block";
-          loadVapi(data.session.user.email);
-        }
-      });
 
     });
   </script>
