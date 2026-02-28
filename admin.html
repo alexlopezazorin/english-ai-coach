@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Admin Panel</title>
+  <title>Panel del Profesor</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -29,56 +29,62 @@
   </div>
 
 <script>
-const supabase = window.supabase.createClient(
-  "https://mxzwicfxfabkelyrpozo.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
-)
+  // 🔹 Creamos el cliente con OTRO nombre para evitar conflicto
+  const supabaseClient = window.supabase.createClient(
+    "https://mxzwicfxfabkelyrpozo.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
+  )
 
-async function checkAccess() {
-  const { data: { user } } = await supabase.auth.getUser()
+  async function checkAccess() {
+    const { data: { user } } = await supabaseClient.auth.getUser()
 
-  if (!user) {
+    if (!user) {
+      window.location.href = "/index.html"
+      return
+    }
+
+    const { data: profile, error } = await supabaseClient
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (error || !profile || profile.role !== 'teacher') {
+      document.getElementById("not-authorized").style.display = "block"
+    } else {
+      document.getElementById("admin-content").style.display = "block"
+      loadUsers()
+    }
+  }
+
+  async function loadUsers() {
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('email, full_name, role')
+
+    if (error) {
+      console.error(error)
+      return
+    }
+
+    const list = document.getElementById("userList")
+    list.innerHTML = ""
+
+    data.forEach(u => {
+      list.innerHTML += `<p>${u.full_name || "Sin nombre"} - ${u.email} (${u.role})</p>`
+    })
+  }
+
+  async function createUser() {
+    alert("Para crear usuarios debes usar la Service Role Key desde backend. No se puede hacer desde frontend por seguridad.")
+  }
+
+  async function logout() {
+    await supabaseClient.auth.signOut()
     window.location.href = "/index.html"
-    return
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile || profile.role !== 'teacher') {
-    document.getElementById("not-authorized").style.display = "block"
-  } else {
-    document.getElementById("admin-content").style.display = "block"
-    loadUsers()
-  }
-}
-
-async function loadUsers() {
-  const { data } = await supabase
-    .from('profiles')
-    .select('email, full_name, role')
-
-  const list = document.getElementById("userList")
-  list.innerHTML = ""
-
-  data.forEach(u => {
-    list.innerHTML += `<p>${u.full_name || "Sin nombre"} - ${u.email} (${u.role})</p>`
-  })
-}
-
-async function createUser() {
-  alert("Para crear usuarios debes usar la Service Role Key desde backend. No se puede hacer desde frontend por seguridad.")
-}
-
-async function logout() {
-  await supabase.auth.signOut()
-  window.location.href = "/index.html"
-}
-
-checkAccess()
+  checkAccess()
 </script>
 </body>
 </html>
