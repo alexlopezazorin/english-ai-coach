@@ -73,7 +73,7 @@
     if (!full_name || !email || !password) return alert("Completa todos los campos")
 
     try {
-      const response = await fetch("https://english-ai-coach.vercel.app/api/create-user", {
+      const response = await fetch("https://mxzwicfxfabkelyrpozo.supabase.co/functions/v1/create-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ full_name, email, password })
