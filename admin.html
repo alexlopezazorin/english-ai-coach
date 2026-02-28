@@ -84,6 +84,9 @@
     const { data } = await supabaseClient.auth.getSession()
     const session = data.session
 
+    console.log("SESSION:", session)
+    console.log("TOKEN:", session?.access_token)
+
     if (!session) {
       alert("Sesión no válida. Recarga la página.")
       return
