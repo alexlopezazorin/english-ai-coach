@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Panel del Profesor</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -29,7 +30,6 @@
   </div>
 
 <script>
-  // 🔹 Creamos el cliente con OTRO nombre para evitar conflicto
   const supabaseClient = window.supabase.createClient(
     "https://mxzwicfxfabkelyrpozo.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
@@ -103,22 +103,6 @@
         body: JSON.stringify({ full_name, email, password })
       }
     )
-
-    const result = await response.json()
-
-    if (!response.ok) {
-      alert("Error: " + (result.error || "No se pudo crear el usuario"))
-      return
-    }
-
-    alert("Usuario creado correctamente")
-
-    document.getElementById("newName").value = ""
-    document.getElementById("newEmail").value = ""
-    document.getElementById("newPassword").value = ""
-
-    loadUsers()
-  }
 
     const result = await response.json()
 
