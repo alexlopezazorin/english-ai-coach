@@ -28,9 +28,12 @@
   </div>
 
 <script>
+  const SUPABASE_URL = "https://mxzwicfxfabkelyrpozo.supabase.co"
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
+
   const supabaseClient = window.supabase.createClient(
-    "https://mxzwicfxfabkelyrpozo.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
   )
 
   async function checkAccess() {
@@ -80,11 +83,12 @@
     }
 
     const response = await fetch(
-      "https://mxzwicfxfabkelyrpozo.supabase.co/functions/v1/create-user",
+      `${SUPABASE_URL}/functions/v1/create-user`,
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY
         },
         body: JSON.stringify({ full_name, email, password })
       }
