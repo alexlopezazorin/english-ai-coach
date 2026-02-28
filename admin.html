@@ -74,30 +74,25 @@
       return alert("Completa todos los campos")
     }
 
-    const { data: { session } } = await supabaseClient.auth.getSession()
-
-    if (!session) {
-      return alert("No hay sesión activa")
-    }
-
-    console.log("TOKEN:", session.access_token)
-
-    const response = await fetch(
-      "https://mxzwicfxfabkelyrpozo.supabase.co/functions/v1/create-user",
+    const { data, error } = await supabaseClient.functions.invoke(
+      "create-user",
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-          "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
-        },
-        body: JSON.stringify({ full_name, email, password })
+        body: { full_name, email, password }
       }
     )
 
-    const text = await response.text()
-    console.log("STATUS:", response.status)
-    console.log("RESPONSE:", text)
+    if (error) {
+      console.error(error)
+      return alert("Error: " + error.message)
+    }
+
+    alert("Usuario creado correctamente")
+
+    document.getElementById("newName").value = ""
+    document.getElementById("newEmail").value = ""
+    document.getElementById("newPassword").value = ""
+
+    loadUsers()
   }
 
   async function logout() {
