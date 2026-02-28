@@ -76,7 +76,64 @@
   }
 
   async function createUser() {
-    alert("Para crear usuarios debes usar la Service Role Key desde backend. No se puede hacer desde frontend por seguridad.")
+    const full_name = document.getElementById("newName").value
+    const email = document.getElementById("newEmail").value
+    const password = document.getElementById("newPassword").value
+
+    if (!full_name || !email || !password) {
+      alert("Completa todos los campos")
+      return
+    }
+
+    const { data: { session } } = await supabaseClient.auth.getSession()
+
+    if (!session) {
+      alert("Sesión no válida")
+      return
+    }
+
+    const response = await fetch(
+      "https://mxzwicfxfabkelyrpozo.supabase.co/functions/v1/create-user",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ full_name, email, password })
+      }
+    )
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      alert("Error: " + (result.error || "No se pudo crear el usuario"))
+      return
+    }
+
+    alert("Usuario creado correctamente")
+
+    document.getElementById("newName").value = ""
+    document.getElementById("newEmail").value = ""
+    document.getElementById("newPassword").value = ""
+
+    loadUsers()
+  }
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      alert("Error: " + (result.error || "No se pudo crear el usuario"))
+      return
+    }
+
+    alert("Usuario creado correctamente")
+
+    document.getElementById("newName").value = ""
+    document.getElementById("newEmail").value = ""
+    document.getElementById("newPassword").value = ""
+
+    loadUsers()
   }
 
   async function logout() {
