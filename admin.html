@@ -74,40 +74,39 @@
 
   async function createUser() {
 
-    const full_name = document.getElementById("newName").value
-    const email = document.getElementById("newEmail").value
-    const password = document.getElementById("newPassword").value
+  const full_name = document.getElementById("newName").value
+  const email = document.getElementById("newEmail").value
+  const password = document.getElementById("newPassword").value
 
-    if (!full_name || !email || !password) {
-      return alert("Completa todos los campos")
-    }
-
-    const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/create-user`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": SUPABASE_ANON_KEY
-        },
-        body: JSON.stringify({ full_name, email, password })
-      }
-    )
-
-    const result = await response.json()
-
-    if (!response.ok) {
-      return alert("Error: " + result.error)
-    }
-
-    alert("Usuario creado correctamente")
-
-    document.getElementById("newName").value = ""
-    document.getElementById("newEmail").value = ""
-    document.getElementById("newPassword").value = ""
-
-    loadUsers()
+  if (!full_name || !email || !password) {
+    return alert("Completa todos los campos")
   }
+
+  const { data: { session } } = await supabaseClient.auth.getSession()
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/create-user`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify({ full_name, email, password })
+  })
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    return alert("Error: " + result.error)
+  }
+
+  alert("Usuario creado correctamente")
+
+  document.getElementById("newName").value = ""
+  document.getElementById("newEmail").value = ""
+  document.getElementById("newPassword").value = ""
+
+  loadUsers()
+}
 
   async function logout() {
     await supabaseClient.auth.signOut()
