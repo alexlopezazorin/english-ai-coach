@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Teacher Panel</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<h1>Teacher Dashboard</h1>
+
+<div id="loading">Comprobando acceso...</div>
+
+<div id="not-authorized" style="display:none;">
+  <h2>No autorizado</h2>
+</div>
+
+<div id="teacher-content" style="display:none;">
+  <h2>Acceso concedido</h2>
+  <p>Bienvenido al panel del teacher.</p>
+
+  <button onclick="logout()">Cerrar sesión</button>
+</div>
+
+<script>
+
+const supabaseClient = window.supabase.createClient(
+  "https://TU_PROJECT_ID.supabase.co",
+  "TU_ANON_PUBLIC_KEY"
+)
+
+async function checkAccess() {
+
+  const { data: { user } } = await supabaseClient.auth.getUser()
+
+  if (!user) {
+    window.location.href = "/index.html"
+    return
+  }
+
+  const { data: profile, error } = await supabaseClient
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  document.getElementById("loading").style.display = "none"
+
+  if (error || !profile || profile.role !== 'teacher') {
+    document.getElementById("not-authorized").style.display = "block"
+  } else {
+    document.getElementById("teacher-content").style.display = "block"
+  }
+}
+
+async function logout() {
+  await supabaseClient.auth.signOut()
+  window.location.href = "/index.html"
+}
+
+checkAccess()
+
+</script>
+
+</body>
+</html>
