@@ -58,14 +58,27 @@ async function checkAccess() {
 
 async function loadRawData() {
 
-  const { data: { session } } = await supabaseClient.auth.getSession()
+  const { data: { user } } = await supabaseClient.auth.getUser()
+
+  if (!user) {
+    alert("No authenticated user")
+    return
+  }
+
+  const { data: { session }, error } = await supabaseClient.auth.getSession()
+
+  if (!session) {
+    alert("No active session")
+    return
+  }
 
   const response = await fetch(
     "https://mxzwicfxfabkelyrpozo.supabase.co/functions/v1/get-raw-data",
     {
       method: "GET",
       headers: {
-        "Authorization": `Bearer ${session.access_token}`
+        "Authorization": `Bearer ${session.access_token}`,
+        "Content-Type": "application/json"
       }
     }
   )
