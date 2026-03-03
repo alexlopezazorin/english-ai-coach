@@ -17,7 +17,10 @@
 <div id="teacher-content" style="display:none;">
   <h2>Acceso concedido</h2>
   <p>Bienvenido al panel del profesor.</p>
-
+  
+  <button onclick="loadRawData()">Cargar datos crudos</button>
+  <pre id="output"></pre>
+  
   <button onclick="logout()">Cerrar sesión</button>
 </div>
 
@@ -51,6 +54,28 @@ async function checkAccess() {
     document.getElementById("teacher-content").style.display = "block"
   }
 }
+
+
+async function loadRawData() {
+
+  const { data: { session } } = await supabaseClient.auth.getSession()
+
+  const response = await fetch(
+    "https://mxzwicfxfabkelyrpozo.supabase.co/functions/v1/get-raw-data",
+    {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${session.access_token}`
+      }
+    }
+  )
+
+  const result = await response.json()
+
+  document.getElementById("output").textContent =
+    JSON.stringify(result, null, 2)
+}
+
 
 async function logout() {
   await supabaseClient.auth.signOut()
