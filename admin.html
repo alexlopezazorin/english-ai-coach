@@ -10,10 +10,6 @@
 
 <div id="loading">Comprobando acceso...</div>
 
-<div id="not-authorized" style="display:none;">
-  <h2>No autorizado</h2>
-</div>
-
 <div id="teacher-content" style="display:none;">
   <h2>Acceso concedido</h2>
   <p>Bienvenido al panel del profesor.</p>
@@ -35,6 +31,7 @@ async function checkAccess() {
 
   const { data: { user } } = await supabaseClient.auth.getUser()
 
+  // 🔹 Si no está logueado → redirigir
   if (!user) {
     window.location.href = "/index.html"
     return
@@ -46,13 +43,15 @@ async function checkAccess() {
     .eq('id', user.id)
     .single()
 
-  document.getElementById("loading").style.display = "none"
-
+  // 🔹 Si no es teacher → redirigir
   if (!profile || profile.role !== 'teacher') {
-    document.getElementById("not-authorized").style.display = "block"
-  } else {
-    document.getElementById("teacher-content").style.display = "block"
+    window.location.href = "/index.html"
+    return
   }
+
+  // 🔹 Si es teacher → mostrar contenido
+  document.getElementById("loading").style.display = "none"
+  document.getElementById("teacher-content").style.display = "block"
 }
 
 async function loadRawData() {
