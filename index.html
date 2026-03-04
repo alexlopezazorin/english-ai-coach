@@ -1,266 +1,265 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI English Coach</title>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI English Coach</title>
 
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        margin-top: 100px;
-        background-color: #f4f4f4;
-      }
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 100px;
+      background-color: #f4f4f4;
+    }
 
-      h1 {
-        font-size: 32px;
-        margin-bottom: 20px;
-      }
+    h1 { font-size: 32px; margin-bottom: 20px; }
+    h2 { font-size: 24px; margin-bottom: 20px; }
 
-      h2 {
-        font-size: 24px;
-        margin-bottom: 20px;
-      }
+    input {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+    }
 
-      input {
-        padding: 10px;
-        margin: 5px;
-        font-size: 16px;
-      }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
 
-      button {
-        padding: 10px 20px;
-        font-size: 16px;
-        cursor: pointer;
-        margin-top: 10px;
-      }
+    #logoutButton {
+      background-color: #ff4d4d;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
 
-      p {
-        font-size: 18px;
-        color: #555;
-      }
+    #logoutButton:hover {
+      background-color: #cc0000;
+    }
+  </style>
+</head>
 
-      #logoutButton {
-        background-color: #ff4d4d;
-        color: white;
-        border: none;
-        border-radius: 5px;
-      }
+<body>
+<div id="app">
+  <h1>Welcome to the Speaking class</h1>
+  <h2>Login</h2>
 
-      #logoutButton:hover {
-        background-color: #cc0000;
-      }
-    </style>
-  </head>
+  <input type="email" id="email" placeholder="Email" />
+  <input type="password" id="password" placeholder="Password" />
+  <button id="loginButton" type="button">Login</button>
 
-  <body>
-    <div id="app">
-      <h1>Welcome to the Speaking class</h1>
-      <h2>Login</h2>
+  <p>After login, click the button to start speaking</p>
+</div>
 
-      <input type="email" id="email" placeholder="Email" />
-      <input type="password" id="password" placeholder="Password" />
-      <button id="loginButton" type="button">Login</button>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-      <p>After login, click the button to start speaking</p>
-    </div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
 
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  const supabase = window.supabase.createClient(
+    "https://mxzwicfxfabkelyrpozo.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
+  );
 
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
+  let sessionStart = null;
+  let currentSessionId = null;
+  let vapiInstance = null;
+  let callActive = false;
+  let studentLevel = null;
 
-        const supabase = window.supabase.createClient(
-          "https://mxzwicfxfabkelyrpozo.supabase.co",
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
-        );
+  const assistant = "378de0bf-1fbb-49e0-a326-78416c92a96f";
+  const apiKey = "0443c03c-942d-4a2a-9450-a395090da1cd ";
 
-        let sessionStart = null;
-        let currentSessionId = null;
-        let vapiInstance = null;
-        let callActive = false;
+  const buttonConfig = {
+    position: "bottom",
+    size: "large",
+    label: "Start Speaking"
+  };
 
-        const assistant =
-          "378de0bf-1fbb-49e0-a326-78416c92a96f";
+  // =============================
+  // Obtener nivel del estudiante
+  // =============================
 
-        const apiKey =
-          "0443c03c-942d-4a2a-9450-a395090da1cd";
+  async function fetchStudentLevel() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
 
-        const buttonConfig = {
-          position: "bottom",
-          size: "large",
-          label: "Start Speaking"
-        };
+    const { data } = await supabase
+      .from("profiles")
+      .select("student_level")
+      .eq("id", user.id)
+      .single();
 
-        // =============================
-        // Crear sesión en DB
-        // =============================
+    if (data) {
+      studentLevel = data.student_level;
+    }
+  }
 
-        async function startSession() {
-          const {
-            data: { user }
-          } = await supabase.auth.getUser();
+  // =============================
+  // Crear sesión en DB
+  // =============================
 
-          if (!user) return;
+  async function startSession() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-          sessionStart = new Date();
+    sessionStart = new Date();
 
-          const { data } = await supabase
-            .from("sessions")
-            .insert([
-              {
-                user_id: user.id,
-                started_at: sessionStart,
-                assistant_version: "v1"
-              }
-            ])
-            .select();
-
-          if (data && data.length > 0) {
-            currentSessionId = data[0].id;
-          }
+    const { data } = await supabase
+      .from("sessions")
+      .insert([
+        {
+          user_id: user.id,
+          started_at: sessionStart,
+          assistant_version: "v1"
         }
+      ])
+      .select();
 
-        async function endSession() {
-          if (!currentSessionId || !sessionStart) return;
+    if (data && data.length > 0) {
+      currentSessionId = data[0].id;
+    }
+  }
 
-          const end = new Date();
-          const duration = Math.floor((end - sessionStart) / 1000);
+  async function endSession() {
+    if (!currentSessionId || !sessionStart) return;
 
-          await supabase
-            .from("sessions")
-            .update({
-              ended_at: end,
-              duration_seconds: duration
-            })
-            .eq("id", currentSessionId);
+    const end = new Date();
+    const duration = Math.floor((end - sessionStart) / 1000);
 
-          sessionStart = null;
-          currentSessionId = null;
-        }
+    await supabase
+      .from("sessions")
+      .update({
+        ended_at: end,
+        duration_seconds: duration
+      })
+      .eq("id", currentSessionId);
 
-        // =============================
-        // Mostrar pantalla Vapi
-        // =============================
+    sessionStart = null;
+    currentSessionId = null;
+  }
 
-        function showVapiScreen() {
-          const appDiv = document.getElementById("app");
+  // =============================
+  // Mostrar pantalla Vapi
+  // =============================
 
-          appDiv.innerHTML = `
-            <h2>Dale al botón para empezar la llamada</h2>
-            <button id="logoutButton">Cerrar sesión</button>
-          `;
+  async function showVapiScreen() {
+    await fetchStudentLevel();
 
-          const logoutBtn = document.getElementById("logoutButton");
-          logoutBtn.addEventListener("click", logout);
+    const appDiv = document.getElementById("app");
 
-          loadVapi();
-        }
+    appDiv.innerHTML = `
+      <h2>Dale al botón para empezar la llamada</h2>
+      <button id="logoutButton">Cerrar sesión</button>
+    `;
 
-        // =============================
-        // Login
-        // =============================
+    document
+      .getElementById("logoutButton")
+      .addEventListener("click", logout);
 
-        async function login() {
-          const email = document.getElementById("email").value;
-          const password = document.getElementById("password").value;
+    loadVapi();
+  }
 
-          const { error } =
-            await supabase.auth.signInWithPassword({
-              email,
-              password
-            });
+  // =============================
+  // Login
+  // =============================
 
-          if (error) {
-            alert(error.message);
-          } else {
-            showVapiScreen();
-          }
-        }
+  async function login() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-        // =============================
-        // Logout (cierra llamada + sesión)
-        // =============================
-
-        async function logout() {
-
-          // Si hay llamada activa, terminarla
-          if (vapiInstance && callActive) {
-            try {
-              await vapiInstance.stop();
-            } catch (e) {
-              console.warn("Error stopping Vapi:", e);
-            }
-
-            await endSession();
-            callActive = false;
-          }
-
-          // Cerrar sesión en Supabase
-          await supabase.auth.signOut();
-
-          // Recargar página
-          location.reload();
-        }
-
-        // =============================
-        // Mantener sesión activa
-        // =============================
-
-        supabase.auth.getSession().then(({ data }) => {
-          if (data.session) {
-            showVapiScreen();
-          }
-        });
-
-        // =============================
-        // Cargar Vapi
-        // =============================
-
-        function loadVapi() {
-          if (vapiInstance) return;
-
-          const script = document.createElement("script");
-          script.src =
-            "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
-          script.async = true;
-
-          script.onload = function () {
-
-            vapiInstance = window.vapiSDK.run({
-              apiKey: apiKey,
-              assistant: assistant,
-              config: buttonConfig
-            });
-
-            vapiInstance.on("call-start", async () => {
-              callActive = true;
-              await startSession();
-            });
-
-            vapiInstance.on("call-end", async () => {
-              callActive = false;
-              await endSession();
-            });
-          };
-
-          document.body.appendChild(script);
-        }
-
-        // =============================
-        // Conectar botón login
-        // =============================
-
-        const loginBtn =
-          document.getElementById("loginButton");
-
-        if (loginBtn) {
-          loginBtn.addEventListener("click", login);
-        }
-
+    const { error } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password
       });
-    </script>
-  </body>
+
+    if (error) {
+      alert(error.message);
+    } else {
+      showVapiScreen();
+    }
+  }
+
+  // =============================
+  // Logout
+  // =============================
+
+  async function logout() {
+    if (vapiInstance && callActive) {
+      try { await vapiInstance.stop(); }
+      catch (e) { console.warn(e); }
+
+      await endSession();
+      callActive = false;
+    }
+
+    await supabase.auth.signOut();
+    location.reload();
+  }
+
+  // =============================
+  // Mantener sesión activa
+  // =============================
+
+  supabase.auth.getSession().then(({ data }) => {
+    if (data.session) {
+      showVapiScreen();
+    }
+  });
+
+  // =============================
+  // Cargar Vapi
+  // =============================
+
+  function loadVapi() {
+    if (vapiInstance) return;
+
+    const script = document.createElement("script");
+    script.src =
+      "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+    script.async = true;
+
+    script.onload = function () {
+
+      vapiInstance = window.vapiSDK.run({
+        apiKey: apiKey,
+        assistant: assistant,
+        config: buttonConfig
+      });
+
+      vapiInstance.on("call-start", async () => {
+        callActive = true;
+        await startSession();
+
+        if (studentLevel) {
+          vapiInstance.send({
+            type: "add-message",
+            message: {
+              role: "system",
+              content: `The student's level is ${studentLevel}`
+            }
+          });
+        }
+      });
+
+      vapiInstance.on("call-end", async () => {
+        callActive = false;
+        await endSession();
+      });
+    };
+
+    document.body.appendChild(script);
+  }
+
+  document
+    .getElementById("loginButton")
+    .addEventListener("click", login);
+
+});
+</script>
+</body>
 </html>
