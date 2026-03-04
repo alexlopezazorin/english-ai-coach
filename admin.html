@@ -40,7 +40,7 @@ async function checkAccess() {
     return
   }
 
-  const { data: profile, error } = await supabaseClient
+  const { data: profile } = await supabaseClient
     .from('profiles')
     .select('role')
     .eq('id', user.id)
@@ -48,24 +48,16 @@ async function checkAccess() {
 
   document.getElementById("loading").style.display = "none"
 
-  if (error || !profile || profile.role !== 'teacher') {
+  if (!profile || profile.role !== 'teacher') {
     document.getElementById("not-authorized").style.display = "block"
   } else {
     document.getElementById("teacher-content").style.display = "block"
   }
 }
 
-
 async function loadRawData() {
 
-  const { data: { user } } = await supabaseClient.auth.getUser()
-
-  if (!user) {
-    alert("No authenticated user")
-    return
-  }
-
-  const { data: { session }, error } = await supabaseClient.auth.getSession()
+  const { data: { session } } = await supabaseClient.auth.getSession()
 
   if (!session) {
     alert("No active session")
@@ -77,8 +69,7 @@ async function loadRawData() {
     {
       method: "GET",
       headers: {
-        "Authorization": `Bearer ${session.access_token}`,
-        "Content-Type": "application/json"
+        "Authorization": `Bearer ${session.access_token}`
       }
     }
   )
@@ -88,7 +79,6 @@ async function loadRawData() {
   document.getElementById("output").textContent =
     JSON.stringify(result, null, 2)
 }
-
 
 async function logout() {
   await supabaseClient.auth.signOut()
