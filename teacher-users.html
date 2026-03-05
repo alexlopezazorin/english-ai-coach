@@ -30,29 +30,28 @@
   </select>
   <button onclick="createUser()">Crear usuario</button>
 
-  <h3>Eliminar usuario</h3>
-  <select id="delete_email"></select>
-  <button onclick="deleteUser()">Eliminar usuario</button>
-
   <br /><br />
   <button onclick="logout()">Cerrar sesión</button>
 
 </div>
 
 <script>
-const supabaseClient = window.supabase.createClient(
+const supabase = window.supabase.createClient(
   "https://mxzwicfxfabkelyrpozo.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
 );
 
+// =====================
+// Verificar acceso
+// =====================
 async function checkAccess() {
-  const { data: { user } } = await supabaseClient.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     window.location.href = "/index.html";
     return;
   }
 
-  const { data: profile } = await supabaseClient
+  const { data: profile } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
@@ -70,34 +69,18 @@ async function checkAccess() {
 }
 
 // =====================
-// Cargar lista de usuarios
+// Cargar usuarios
 // =====================
 async function loadUsers() {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) return;
+  const { data: users, error } = await supabase
+    .from('profiles')
+    .select('*');
 
-  const response = await fetch(
-    "https://mxzwicfxfabkelyrpozo.supabase.co/functions/v1/get-users",
-    {
-      method: "GET",
-      headers: { "Authorization": `Bearer ${session.access_token}` }
-    }
-  );
-
-  const users = await response.json();
-
-  // Mostrar lista JSON completa
-  document.getElementById("users_output").textContent = JSON.stringify(users, null, 2);
-
-  // Rellenar dropdown de eliminación
-  const deleteSelect = document.getElementById("delete_email");
-  deleteSelect.innerHTML = "";
-  users.forEach(u => {
-    const option = document.createElement("option");
-    option.value = u.email;
-    option.textContent = u.email;
-    deleteSelect.appendChild(option);
-  });
+  if (error) {
+    document.getElementById("users_output").textContent = "Error al cargar usuarios: " + error.message;
+  } else {
+    document.getElementById("users_output").textContent = JSON.stringify(users, null, 2);
+  }
 }
 
 // =====================
@@ -109,22 +92,29 @@ async function createUser() {
   const full_name = document.getElementById("new_full_name").value.trim();
   const student_level = document.getElementById("new_student_level").value;
 
-  // Validación
-  if (!email || !full_name || !password) {
+  // Validaciones
+  if (!email || !password || !full_name) {
     return alert("Email, Full Name y Password son obligatorios.");
   }
+
   if (password.length < 6) {
     return alert("La contraseña debe tener al menos 6 caracteres.");
   }
-  // Validación básica email
+
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     return alert("Email inválido.");
   }
 
-  const { data: { session } } = await supabaseClient.auth.getSession();
+  const validLevels = ["A1","A2","B1","B2","C1","C2"];
+  if (!validLevels.includes(student_level)) {
+    return alert("Selecciona un nivel válido para el estudiante.");
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
   if (!session) return alert("No hay sesión activa");
 
+  // Crear usuario usando función serverless
   const response = await fetch(
     "https://mxzwicfxfabkelyrpozo.supabase.co/functions/v1/create-user",
     {
@@ -147,42 +137,10 @@ async function createUser() {
 }
 
 // =====================
-// Eliminar usuario
-// =====================
-async function deleteUser() {
-  const email = document.getElementById("delete_email").value;
-  if (!email) return alert("Selecciona un usuario para eliminar");
-  if (!confirm(`¿Seguro que quieres eliminar al usuario ${email}?`)) return;
-
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (!session) return alert("No hay sesión activa");
-
-  const response = await fetch(
-    "https://mxzwicfxfabkelyrpozo.supabase.co/functions/v1/delete-user",
-    {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${session.access_token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ email })
-    }
-  );
-
-  const result = await response.json();
-  if (result.error) {
-    alert("Error al eliminar usuario: " + result.error);
-  } else {
-    alert(`Usuario ${email} eliminado correctamente`);
-    loadUsers();
-  }
-}
-
-// =====================
 // Cerrar sesión
 // =====================
 async function logout() {
-  await supabaseClient.auth.signOut();
+  await supabase.auth.signOut();
   window.location.href = "/index.html";
 }
 
