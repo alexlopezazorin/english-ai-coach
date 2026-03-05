@@ -89,10 +89,38 @@ JSON.stringify(data,null,2)
 
 async function createUser(){
 
-const email=document.getElementById("email").value
-const password=document.getElementById("password").value
-const full_name=document.getElementById("full_name").value
-const student_level=document.getElementById("student_level").value
+const email = document.getElementById("email").value.trim()
+const password = document.getElementById("password").value.trim()
+const full_name = document.getElementById("full_name").value.trim()
+const student_level = document.getElementById("student_level").value
+
+// =======================
+// Validaciones
+// =======================
+
+// campos obligatorios
+if(!email || !password || !full_name){
+alert("Email, password and full name are required")
+return
+}
+
+// formato email
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+if(!emailRegex.test(email)){
+alert("Invalid email format")
+return
+}
+
+// password mínima
+if(password.length < 6){
+alert("Password must be at least 6 characters")
+return
+}
+
+// =======================
+// Llamada a Edge Function
+// =======================
 
 const { data:{ session } } = await supabaseClient.auth.getSession()
 
