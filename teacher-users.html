@@ -20,7 +20,7 @@
   <input type="password" id="new_password" placeholder="Password" />
   <input type="text" id="new_full_name" placeholder="Full Name" />
   <select id="new_student_level">
-    <option value="">Select level</option>
+    <option value="">Selecciona nivel</option>
     <option value="A1">A1</option>
     <option value="A2">A2</option>
     <option value="B1">B1</option>
@@ -47,7 +47,6 @@ const supabaseClient = window.supabase.createClient(
 
 async function checkAccess() {
   const { data: { user } } = await supabaseClient.auth.getUser();
-
   if (!user) {
     window.location.href = "/index.html";
     return;
@@ -87,6 +86,7 @@ async function loadUsers() {
 
   const users = await response.json();
 
+  // Mostrar lista JSON completa
   document.getElementById("users_output").textContent = JSON.stringify(users, null, 2);
 
   // Rellenar dropdown de eliminación
@@ -109,9 +109,17 @@ async function createUser() {
   const full_name = document.getElementById("new_full_name").value.trim();
   const student_level = document.getElementById("new_student_level").value;
 
-  if (!email || !password || !full_name) {
-    alert("Email, Password y Full Name son obligatorios.");
-    return;
+  // Validación
+  if (!email || !full_name || !password) {
+    return alert("Email, Full Name y Password son obligatorios.");
+  }
+  if (password.length < 6) {
+    return alert("La contraseña debe tener al menos 6 caracteres.");
+  }
+  // Validación básica email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return alert("Email inválido.");
   }
 
   const { data: { session } } = await supabaseClient.auth.getSession();
