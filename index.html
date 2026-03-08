@@ -184,7 +184,7 @@
               } catch (e) {
                 appendLog("Error obteniendo structured_outputs: " + e.message);
               }
-            }, 1500); // 1.5 segundos para dar tiempo a Vapi
+            }, 15000); // 15 segundos para dar tiempo a Vapi
           });
         };
         document.body.appendChild(script);
@@ -194,5 +194,6 @@
     });
   </script>
 </body>
+
 
 </html>
