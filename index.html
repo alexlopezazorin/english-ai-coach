@@ -167,7 +167,12 @@
       async function logout() {
         if (vapiInstance && callActive) {
           try {
-            await vapiInstance.stop();
+            // Enviar mensaje final a Vapi
+            const finalResponse = await vapiInstance.send({
+              type: "add-message",
+              message: { role: "user", content: "SESSION_JUST_FINISHED" }
+            });
+            console.log("Received JSON from Vapi:", finalResponse); // 👈 Aquí ves el JSON en DevTools
           } catch (e) {
             console.warn(e);
           }
@@ -201,6 +206,8 @@
             assistant: assistant,
             config: buttonConfig
           });
+
+          // Evento al iniciar llamada
           vapiInstance.on("call-start", async () => {
             callActive = true;
             await startSession();
@@ -214,9 +221,16 @@
               });
             }
           });
+
+          // Evento al finalizar llamada
           vapiInstance.on("call-end", async () => {
             callActive = false;
             await endSession();
+          });
+
+          // Escuchar cualquier respuesta JSON de Vapi
+          vapiInstance.on("structured-output", (jsonData) => {
+            console.log("Structured output received from Vapi:", jsonData);
           });
         };
         document.body.appendChild(script);
