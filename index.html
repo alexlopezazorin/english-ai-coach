@@ -9,7 +9,7 @@
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      margin-top: 100px;
+      margin-top: 50px;
       background-color: #f4f4f4;
     }
 
@@ -46,6 +46,20 @@
     #logoutButton:hover {
       background-color: #cc0000;
     }
+
+    #log {
+      margin-top: 20px;
+      text-align: left;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0px 0px 5px rgba(0,0,0,0.2);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
   </style>
 </head>
 
@@ -59,6 +73,8 @@
     <p>After login, click the button to start speaking</p>
   </div>
 
+  <div id="log"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -67,6 +83,12 @@
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
       );
 
+      const logDiv = document.getElementById("log");
+
+      function appendLog(message) {
+        logDiv.textContent += message + "\n";
+      }
+
       let sessionStart = null;
       let currentSessionId = null;
       let vapiInstance = null;
@@ -74,20 +96,12 @@
       let studentLevel = null;
       const assistant = "378de0bf-1fbb-49e0-a326-78416c92a96f";
       const apiKey = "0443c03c-942d-4a2a-9450-a395090da1cd";
-      const buttonConfig = {
-        position: "bottom",
-        size: "large",
-        label: "Start Speaking"
-      };
+      const buttonConfig = { position: "bottom", size: "large", label: "Start Speaking" };
 
       async function fetchStudentLevel() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
-        const { data } = await supabase
-          .from("profiles")
-          .select("student_level")
-          .eq("id", user.id)
-          .single();
+        const { data } = await supabase.from("profiles").select("student_level").eq("id", user.id).single();
         if (data) studentLevel = data.student_level;
       }
 
@@ -95,10 +109,7 @@
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         sessionStart = new Date();
-        const { data } = await supabase
-          .from("sessions")
-          .insert([{ user_id: user.id, started_at: sessionStart, assistant_version: "v1" }])
-          .select();
+        const { data } = await supabase.from("sessions").insert([{ user_id: user.id, started_at: sessionStart, assistant_version: "v1" }]).select();
         if (data && data.length > 0) currentSessionId = data[0].id;
       }
 
@@ -106,10 +117,7 @@
         if (!currentSessionId || !sessionStart) return;
         const end = new Date();
         const duration = Math.floor((end - sessionStart) / 1000);
-        await supabase
-          .from("sessions")
-          .update({ ended_at: end, duration_seconds: duration })
-          .eq("id", currentSessionId);
+        await supabase.from("sessions").update({ ended_at: end, duration_seconds: duration }).eq("id", currentSessionId);
         sessionStart = null;
         currentSessionId = null;
       }
@@ -165,17 +173,20 @@
             callActive = false;
             await endSession();
 
+            // Mostrar en pantalla que se envía SESSION_JUST_FINISHED
+            appendLog("Enviando SESSION_JUST_FINISHED...");
             try {
               await vapiInstance.send({ type: "add-message", message: { role: "user", content: "SESSION_JUST_FINISHED" } });
-            } catch (e) { console.warn(e); }
+            } catch (e) {
+              appendLog("Error enviando SESSION_JUST_FINISHED: " + e.message);
+            }
           });
 
-          // =============================
-          // Listener de tool-call para recibir JSON de sessionEvaluation
-          // =============================
+          // Escuchar cualquier tool-call y mostrarlo en pantalla
           vapiInstance.on("tool-call", (event) => {
             if (event.tool_name === "sessionEvaluation") {
-              console.log("JSON recibido:", event.result);
+              appendLog("JSON recibido de sessionEvaluation:");
+              appendLog(JSON.stringify(event.result, null, 2));
             }
           });
         };
