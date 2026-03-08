@@ -156,6 +156,12 @@
         script.onload = function () {
           vapiInstance = window.vapiSDK.run({ apiKey, assistant, config: buttonConfig });
 
+          // Escuchar structured-output **siempre**
+          vapiInstance.on("structured-output", (event) => {
+            appendLog("Structured output recibido:");
+            appendLog(JSON.stringify(event, null, 2));
+          });
+
           vapiInstance.on("call-start", async () => {
             callActive = true;
             await startSession();
@@ -174,17 +180,6 @@
             } catch (e) {
               appendLog("Error enviando SESSION_JUST_FINISHED: " + e.message);
             }
-
-            // Esperar un par de segundos y luego obtener el structured output
-            setTimeout(async () => {
-              try {
-                const structured = await vapiInstance.getStructuredOutputs();
-                appendLog("Structured output recibido:");
-                appendLog(JSON.stringify(structured, null, 2));
-              } catch (e) {
-                appendLog("Error obteniendo structured_outputs: " + e.message);
-              }
-            }, 15000); // 15 segundos para dar tiempo a Vapi
           });
         };
         document.body.appendChild(script);
@@ -194,6 +189,5 @@
     });
   </script>
 </body>
-
 
 </html>
