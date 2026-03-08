@@ -80,9 +80,6 @@
         label: "Start Speaking"
       };
 
-      // =============================
-      // Obtener nivel del estudiante
-      // =============================
       async function fetchStudentLevel() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
@@ -91,29 +88,18 @@
           .select("student_level")
           .eq("id", user.id)
           .single();
-        if (data) {
-          studentLevel = data.student_level;
-        }
+        if (data) studentLevel = data.student_level;
       }
 
-      // =============================
-      // Crear sesión en DB
-      // =============================
       async function startSession() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         sessionStart = new Date();
         const { data } = await supabase
           .from("sessions")
-          .insert([{
-            user_id: user.id,
-            started_at: sessionStart,
-            assistant_version: "v1"
-          }])
+          .insert([{ user_id: user.id, started_at: sessionStart, assistant_version: "v1" }])
           .select();
-        if (data && data.length > 0) {
-          currentSessionId = data[0].id;
-        }
+        if (data && data.length > 0) currentSessionId = data[0].id;
       }
 
       async function endSession() {
@@ -128,9 +114,6 @@
         currentSessionId = null;
       }
 
-      // =============================
-      // Mostrar pantalla Vapi
-      // =============================
       async function showVapiScreen() {
         await fetchStudentLevel();
         const appDiv = document.getElementById("app");
@@ -138,39 +121,21 @@
           <h2>Dale al botón para empezar la llamada</h2>
           <button id="logoutButton">Cerrar sesión</button>
         `;
-        document
-          .getElementById("logoutButton")
-          .addEventListener("click", logout);
+        document.getElementById("logoutButton").addEventListener("click", logout);
         loadVapi();
       }
 
-      // =============================
-      // Login
-      // =============================
       async function login() {
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        if (error) {
-          alert(error.message);
-        } else {
-          showVapiScreen();
-        }
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) alert(error.message);
+        else showVapiScreen();
       }
 
-      // =============================
-      // Logout
-      // =============================
       async function logout() {
         if (vapiInstance && callActive) {
-          try {
-            await vapiInstance.stop();
-          } catch (e) {
-            console.warn(e);
-          }
+          try { await vapiInstance.stop(); } catch (e) { console.warn(e); }
           await endSession();
           callActive = false;
         }
@@ -178,59 +143,31 @@
         location.reload();
       }
 
-      // =============================
-      // Mantener sesión activa
-      // =============================
-      supabase.auth.getSession().then(({ data }) => {
-        if (data.session) {
-          showVapiScreen();
-        }
-      });
+      supabase.auth.getSession().then(({ data }) => { if (data.session) showVapiScreen(); });
 
-      // =============================
-      // Cargar Vapi
-      // =============================
       function loadVapi() {
         if (vapiInstance) return;
         const script = document.createElement("script");
         script.src = "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
         script.async = true;
         script.onload = function () {
-          vapiInstance = window.vapiSDK.run({
-            apiKey: apiKey,
-            assistant: assistant,
-            config: buttonConfig
-          });
+          vapiInstance = window.vapiSDK.run({ apiKey, assistant, config: buttonConfig });
 
-          // Evento al iniciar llamada
           vapiInstance.on("call-start", async () => {
             callActive = true;
             await startSession();
             if (studentLevel) {
-              vapiInstance.send({
-                type: "add-message",
-                message: {
-                  role: "system",
-                  content: `The student's level is ${studentLevel}`
-                }
-              });
+              vapiInstance.send({ type: "add-message", message: { role: "system", content: `The student's level is ${studentLevel}` } });
             }
           });
 
-          // Evento al finalizar llamada
           vapiInstance.on("call-end", async () => {
             callActive = false;
             await endSession();
 
-            // Enviar SESSION_JUST_FINISHED para generar evaluación
             try {
-              await vapiInstance.send({
-                type: "add-message",
-                message: { role: "user", content: "SESSION_JUST_FINISHED" }
-              });
-            } catch (e) {
-              console.warn(e);
-            }
+              await vapiInstance.send({ type: "add-message", message: { role: "user", content: "SESSION_JUST_FINISHED" } });
+            } catch (e) { console.warn(e); }
           });
 
           // =============================
@@ -238,18 +175,14 @@
           // =============================
           vapiInstance.on("tool-call", (event) => {
             if (event.tool_name === "sessionEvaluation") {
-              const evaluation = event.result;
-              console.log("JSON recibido:", evaluation);
+              console.log("JSON recibido:", event.result);
             }
           });
-
         };
         document.body.appendChild(script);
       }
 
-      document
-        .getElementById("loginButton")
-        .addEventListener("click", login);
+      document.getElementById("loginButton").addEventListener("click", login);
     });
   </script>
 </body>
