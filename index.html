@@ -156,14 +156,6 @@
         script.onload = function () {
           vapiInstance = window.vapiSDK.run({ apiKey, assistant, config: buttonConfig });
 
-          // Listener global de tool-call **antes de enviar SESSION_JUST_FINISHED**
-          vapiInstance.on("tool-call", (event) => {
-            if (event.tool_name === "sessionEvaluation") {
-              appendLog("JSON recibido de sessionEvaluation:");
-              appendLog(JSON.stringify(event.result, null, 2));
-            }
-          });
-
           vapiInstance.on("call-start", async () => {
             callActive = true;
             await startSession();
@@ -176,13 +168,23 @@
             callActive = false;
             await endSession();
 
-            // Enviar SESSION_JUST_FINISHED después de haber activado tool-call listener
             appendLog("Enviando SESSION_JUST_FINISHED...");
             try {
               await vapiInstance.send({ type: "add-message", message: { role: "user", content: "SESSION_JUST_FINISHED" } });
             } catch (e) {
               appendLog("Error enviando SESSION_JUST_FINISHED: " + e.message);
             }
+
+            // Esperar un par de segundos y luego obtener el structured output
+            setTimeout(async () => {
+              try {
+                const structured = await vapiInstance.getStructuredOutputs();
+                appendLog("Structured output recibido:");
+                appendLog(JSON.stringify(structured, null, 2));
+              } catch (e) {
+                appendLog("Error obteniendo structured_outputs: " + e.message);
+              }
+            }, 1500); // 1.5 segundos para dar tiempo a Vapi
           });
         };
         document.body.appendChild(script);
