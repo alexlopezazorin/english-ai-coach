@@ -56,7 +56,7 @@
       background: #fff;
       padding: 15px;
       border-radius: 8px;
-      box-shadow: 0px 0px 5px rgba(0,0,0,0.2);
+      box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.2);
       white-space: pre-wrap;
       word-wrap: break-word;
     }
@@ -84,10 +84,7 @@
       );
 
       const logDiv = document.getElementById("log");
-
-      function appendLog(message) {
-        logDiv.textContent += message + "\n";
-      }
+      function appendLog(message) { logDiv.textContent += message + "\n"; }
 
       let sessionStart = null;
       let currentSessionId = null;
@@ -125,10 +122,8 @@
       async function showVapiScreen() {
         await fetchStudentLevel();
         const appDiv = document.getElementById("app");
-        appDiv.innerHTML = `
-          <h2>Dale al botón para empezar la llamada</h2>
-          <button id="logoutButton">Cerrar sesión</button>
-        `;
+        appDiv.innerHTML = `<h2>Dale al botón para empezar la llamada</h2>
+                            <button id="logoutButton">Cerrar sesión</button>`;
         document.getElementById("logoutButton").addEventListener("click", logout);
         loadVapi();
       }
@@ -161,6 +156,14 @@
         script.onload = function () {
           vapiInstance = window.vapiSDK.run({ apiKey, assistant, config: buttonConfig });
 
+          // Listener global de tool-call **antes de enviar SESSION_JUST_FINISHED**
+          vapiInstance.on("tool-call", (event) => {
+            if (event.tool_name === "sessionEvaluation") {
+              appendLog("JSON recibido de sessionEvaluation:");
+              appendLog(JSON.stringify(event.result, null, 2));
+            }
+          });
+
           vapiInstance.on("call-start", async () => {
             callActive = true;
             await startSession();
@@ -173,20 +176,12 @@
             callActive = false;
             await endSession();
 
-            // Mostrar en pantalla que se envía SESSION_JUST_FINISHED
+            // Enviar SESSION_JUST_FINISHED después de haber activado tool-call listener
             appendLog("Enviando SESSION_JUST_FINISHED...");
             try {
               await vapiInstance.send({ type: "add-message", message: { role: "user", content: "SESSION_JUST_FINISHED" } });
             } catch (e) {
               appendLog("Error enviando SESSION_JUST_FINISHED: " + e.message);
-            }
-          });
-
-          // Escuchar cualquier tool-call y mostrarlo en pantalla
-          vapiInstance.on("tool-call", (event) => {
-            if (event.tool_name === "sessionEvaluation") {
-              appendLog("JSON recibido de sessionEvaluation:");
-              appendLog(JSON.stringify(event.result, null, 2));
             }
           });
         };
