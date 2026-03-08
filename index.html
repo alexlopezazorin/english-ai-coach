@@ -220,33 +220,29 @@
           // Evento al finalizar llamada
           vapiInstance.on("call-end", async () => {
             callActive = false;
+            await endSession();
 
+            // Enviar SESSION_JUST_FINISHED para generar evaluación
             try {
-              // Enviar mensaje final para evaluación
-              const finalResponse = await vapiInstance.send({
+              await vapiInstance.send({
                 type: "add-message",
                 message: { role: "user", content: "SESSION_JUST_FINISHED" }
               });
-
-              // Escuchar JSON estructurado
-              if (finalResponse.structured_outputs && Object.keys(finalResponse.structured_outputs).length > 0) {
-                console.log("Structured JSON from Vapi (call-end):", finalResponse.structured_outputs);
-              } else {
-                console.warn("No structured outputs received yet at call-end.");
-              }
-
             } catch (e) {
               console.warn(e);
             }
-
-            // Guardar duración de sesión en Supabase
-            await endSession();
           });
 
-          // Listener general por si hay otros structured outputs
-          vapiInstance.on("structured-output", (jsonData) => {
-            console.log("Structured output received from Vapi (general):", jsonData);
+          // =============================
+          // Listener de tool-call para recibir JSON de sessionEvaluation
+          // =============================
+          vapiInstance.on("tool-call", (event) => {
+            if (event.tool_name === "sessionEvaluation") {
+              const evaluation = event.result;
+              console.log("JSON recibido:", evaluation);
+            }
           });
+
         };
         document.body.appendChild(script);
       }
