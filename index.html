@@ -1,265 +1,318 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI English Coach</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI English Coach</title>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 100px;
-      background-color: #f4f4f4;
-    }
+<style>
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  margin-top: 100px;
+  background-color: #f4f4f4;
+}
 
-    h1 { font-size: 32px; margin-bottom: 20px; }
-    h2 { font-size: 24px; margin-bottom: 20px; }
+h1 { font-size: 32px; margin-bottom: 20px; }
+h2 { font-size: 24px; margin-bottom: 20px; }
 
-    input {
-      padding: 10px;
-      margin: 5px;
-      font-size: 16px;
-    }
+input {
+  padding: 10px;
+  margin: 5px;
+  font-size: 16px;
+}
 
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 10px;
+}
 
-    #logoutButton {
-      background-color: #ff4d4d;
-      color: white;
-      border: none;
-      border-radius: 5px;
-    }
+#logoutButton {
+  background-color: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
 
-    #logoutButton:hover {
-      background-color: #cc0000;
-    }
-  </style>
+#logoutButton:hover {
+  background-color: #cc0000;
+}
+
+#metricsOutput{
+  margin-top:40px;
+  background:white;
+  padding:20px;
+  border-radius:8px;
+  width:400px;
+  margin-left:auto;
+  margin-right:auto;
+  word-break:break-all;
+}
+</style>
 </head>
 
 <body>
+
 <div id="app">
-  <h1>Welcome to the Speaking class</h1>
-  <h2>Login</h2>
+<h1>Welcome to the Speaking class</h1>
+<h2>Login</h2>
 
-  <input type="email" id="email" placeholder="Email" />
-  <input type="password" id="password" placeholder="Password" />
-  <button id="loginButton" type="button">Login</button>
+<input type="email" id="email" placeholder="Email" />
+<input type="password" id="password" placeholder="Password" />
+<button id="loginButton" type="button">Login</button>
 
-  <p>After login, click the button to start speaking</p>
+<p>After login, click the button to start speaking</p>
 </div>
+
+<div id="metricsOutput"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
+
 document.addEventListener("DOMContentLoaded", function () {
 
-  const supabase = window.supabase.createClient(
-    "https://mxzwicfxfabkelyrpozo.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
-  );
+const supabase = window.supabase.createClient(
+"https://mxzwicfxfabkelyrpozo.supabase.co",
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im14endpY2Z4ZmFia2VseXJwb3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyMDIwODgsImV4cCI6MjA4Nzc3ODA4OH0.2YFqaJuFg1EgEvOGF10s3oJRGqSIFetSpMieLSly0jE"
+);
 
-  let sessionStart = null;
-  let currentSessionId = null;
-  let vapiInstance = null;
-  let callActive = false;
-  let studentLevel = null;
+let sessionStart = null;
+let currentSessionId = null;
+let vapiInstance = null;
+let callActive = false;
+let studentLevel = null;
 
-  const assistant = "378de0bf-1fbb-49e0-a326-78416c92a96f";
-  const apiKey = "0443c03c-942d-4a2a-9450-a395090da1cd ";
+const assistant = "378de0bf-1fbb-49e0-a326-78416c92a96f";
+const apiKey = "0443c03c-942d-4a2a-9450-a395090da1cd";
 
-  const buttonConfig = {
-    position: "bottom",
-    size: "large",
-    label: "Start Speaking"
-  };
+const buttonConfig = {
+position: "bottom",
+size: "large",
+label: "Start Speaking"
+};
 
-  // =============================
-  // Obtener nivel del estudiante
-  // =============================
+let evaluationRequested = false;
 
-  async function fetchStudentLevel() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+async function fetchStudentLevel() {
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) return null;
 
-    const { data } = await supabase
-      .from("profiles")
-      .select("student_level")
-      .eq("id", user.id)
-      .single();
+const { data } = await supabase
+.from("profiles")
+.select("student_level")
+.eq("id", user.id)
+.single();
 
-    if (data) {
-      studentLevel = data.student_level;
-    }
-  }
+if (data) {
+studentLevel = data.student_level;
+}
+}
 
-  // =============================
-  // Crear sesión en DB
-  // =============================
+async function startSession() {
 
-  async function startSession() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) return;
 
-    sessionStart = new Date();
+sessionStart = new Date();
 
-    const { data } = await supabase
-      .from("sessions")
-      .insert([
-        {
-          user_id: user.id,
-          started_at: sessionStart,
-          assistant_version: "v1"
-        }
-      ])
-      .select();
+const { data } = await supabase
+.from("sessions")
+.insert([
+{
+user_id: user.id,
+started_at: sessionStart,
+assistant_version: "v1"
+}
+])
+.select();
 
-    if (data && data.length > 0) {
-      currentSessionId = data[0].id;
-    }
-  }
+if (data && data.length > 0) {
+currentSessionId = data[0].id;
+}
 
-  async function endSession() {
-    if (!currentSessionId || !sessionStart) return;
+}
 
-    const end = new Date();
-    const duration = Math.floor((end - sessionStart) / 1000);
+async function endSession() {
 
-    await supabase
-      .from("sessions")
-      .update({
-        ended_at: end,
-        duration_seconds: duration
-      })
-      .eq("id", currentSessionId);
+if (!currentSessionId || !sessionStart) return;
 
-    sessionStart = null;
-    currentSessionId = null;
-  }
+const end = new Date();
+const duration = Math.floor((end - sessionStart) / 1000);
 
-  // =============================
-  // Mostrar pantalla Vapi
-  // =============================
+await supabase
+.from("sessions")
+.update({
+ended_at: end,
+duration_seconds: duration
+})
+.eq("id", currentSessionId);
 
-  async function showVapiScreen() {
-    await fetchStudentLevel();
+sessionStart = null;
+currentSessionId = null;
 
-    const appDiv = document.getElementById("app");
+}
 
-    appDiv.innerHTML = `
-      <h2>Dale al botón para empezar la llamada</h2>
-      <button id="logoutButton">Cerrar sesión</button>
-    `;
+async function requestEvaluation(){
 
-    document
-      .getElementById("logoutButton")
-      .addEventListener("click", logout);
+if(!vapiInstance || evaluationRequested) return;
 
-    loadVapi();
-  }
+evaluationRequested = true;
 
-  // =============================
-  // Login
-  // =============================
+try{
 
-  async function login() {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+const response = await vapiInstance.send({
+type:"add-message",
+message:{
+role:"system",
+content:"SYSTEM_EVENT: SESSION_END"
+}
+});
 
-    const { error } =
-      await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+if(response){
+document.getElementById("metricsOutput").innerText = JSON.stringify(response,null,2);
+}
 
-    if (error) {
-      alert(error.message);
-    } else {
-      showVapiScreen();
-    }
-  }
+}catch(err){
+console.warn("Evaluation error:",err);
+}
 
-  // =============================
-  // Logout
-  // =============================
+}
 
-  async function logout() {
-    if (vapiInstance && callActive) {
-      try { await vapiInstance.stop(); }
-      catch (e) { console.warn(e); }
+async function showVapiScreen() {
 
-      await endSession();
-      callActive = false;
-    }
+await fetchStudentLevel();
 
-    await supabase.auth.signOut();
-    location.reload();
-  }
+const appDiv = document.getElementById("app");
 
-  // =============================
-  // Mantener sesión activa
-  // =============================
+appDiv.innerHTML = `
+<h2>Dale al botón para empezar la llamada</h2>
+<button id="logoutButton">Cerrar sesión</button>
+`;
 
-  supabase.auth.getSession().then(({ data }) => {
-    if (data.session) {
-      showVapiScreen();
-    }
-  });
+document
+.getElementById("logoutButton")
+.addEventListener("click", logout);
 
-  // =============================
-  // Cargar Vapi
-  // =============================
+loadVapi();
 
-  function loadVapi() {
-    if (vapiInstance) return;
+}
 
-    const script = document.createElement("script");
-    script.src =
-      "https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
-    script.async = true;
+async function login() {
 
-    script.onload = function () {
+const email = document.getElementById("email").value;
+const password = document.getElementById("password").value;
 
-      vapiInstance = window.vapiSDK.run({
-        apiKey: apiKey,
-        assistant: assistant,
-        config: buttonConfig
-      });
+const { error } =
+await supabase.auth.signInWithPassword({
+email,
+password
+});
 
-      vapiInstance.on("call-start", async () => {
-        callActive = true;
-        await startSession();
+if (error) {
+alert(error.message);
+} else {
+showVapiScreen();
+}
 
-        if (studentLevel) {
-          vapiInstance.send({
-            type: "add-message",
-            message: {
-              role: "system",
-              content: `The student's level is ${studentLevel}`
-            }
-          });
-        }
-      });
+}
 
-      vapiInstance.on("call-end", async () => {
-        callActive = false;
-        await endSession();
-      });
-    };
+async function logout() {
 
-    document.body.appendChild(script);
-  }
+if (vapiInstance && callActive) {
 
-  document
-    .getElementById("loginButton")
-    .addEventListener("click", login);
+try{
+await requestEvaluation();
+await vapiInstance.stop();
+}catch(e){console.warn(e);}
+
+await endSession();
+callActive = false;
+
+}
+
+await supabase.auth.signOut();
+location.reload();
+
+}
+
+supabase.auth.getSession().then(({ data }) => {
+if (data.session) {
+showVapiScreen();
+}
+});
+
+function loadVapi() {
+
+if (vapiInstance) return;
+
+const script = document.createElement("script");
+
+script.src =
+"https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js";
+
+script.async = true;
+
+script.onload = function () {
+
+vapiInstance = window.vapiSDK.run({
+apiKey: apiKey,
+assistant: assistant,
+config: buttonConfig
+});
+
+vapiInstance.on("call-start", async () => {
+
+callActive = true;
+evaluationRequested = false;
+
+await startSession();
+
+if (studentLevel) {
+
+vapiInstance.send({
+type: "add-message",
+message: {
+role: "system",
+content: `The student's level is ${studentLevel}`
+}
+});
+
+}
+
+});
+
+vapiInstance.on("call-end", async () => {
+
+callActive = false;
+
+await requestEvaluation();
+await endSession();
+
+});
+
+};
+
+document.body.appendChild(script);
+
+}
+
+window.addEventListener("beforeunload", async () => {
+
+if(callActive){
+await requestEvaluation();
+}
+
+});
+
+document
+.getElementById("loginButton")
+.addEventListener("click", login);
 
 });
 </script>
+
 </body>
 </html>
