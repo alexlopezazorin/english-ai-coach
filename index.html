@@ -156,12 +156,6 @@
         script.onload = function () {
           vapiInstance = window.vapiSDK.run({ apiKey, assistant, config: buttonConfig });
 
-          // Escuchar structured-output **siempre**
-          vapiInstance.on("structured-output", (event) => {
-            appendLog("Structured output recibido:");
-            appendLog(JSON.stringify(event, null, 2));
-          });
-
           vapiInstance.on("call-start", async () => {
             callActive = true;
             await startSession();
@@ -176,6 +170,15 @@
 
             appendLog("Enviando SESSION_JUST_FINISHED...");
             try {
+              // Listener temporal para structured-output justo después de enviar la señal
+              const structuredListener = (event) => {
+                appendLog("Structured output recibido:");
+                appendLog(JSON.stringify(event, null, 2));
+                vapiInstance.off("structured-output", structuredListener); // solo una vez
+              };
+
+              vapiInstance.on("structured-output", structuredListener);
+
               await vapiInstance.send({ type: "add-message", message: { role: "user", content: "SESSION_JUST_FINISHED" } });
             } catch (e) {
               appendLog("Error enviando SESSION_JUST_FINISHED: " + e.message);
