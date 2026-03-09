@@ -200,14 +200,6 @@
             apiKey: apiKey,
             assistant: assistant,
             config: buttonConfig,
-            clientMessages: ["end-of-call-report"]
-          });
-
-          vapiInstance.on("message", (message) => {
-            if (message.type === "end-of-call-report") {
-              const structured = message.analysis?.structuredData;
-              console.log("Structured output recibido:", structured);
-            }
           });
 
           vapiInstance.on("call-start", async () => {
